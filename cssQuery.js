@@ -44,14 +44,16 @@
           style;
       // Skip over text nodes
       if( node.nodeType !== 3 ) {
-        if( node.currentStyle ) {
-          style = node.currentStyle;
-          ret = { g: function (key) { return style[key] + ''; } };
-        }
-        else if(gCS) {
+        if(gCS) {
           // Second parameter is for pseudo element (we never use it)
           style = gCS(node);
-          ret = { g: function (key) { return style.getPropertyValue(key); } };
+          ret = { g: function (key) { return style.getPropertyValue(key) + ''; } };
+        }
+        else {
+          style = node.currentStyle;
+          if( style ) {
+            ret = { g: function (key) { return style[key] + ''; } };
+          }
         }
       }
       return ret;
@@ -73,6 +75,7 @@
         styleElt,
         styleSheet,
         cssRule,
+        rules,
         arr = [],
         ruleIndex;
 
@@ -105,16 +108,28 @@
     styleSheet = document.styleSheets[0];
     // CONFIGURE POINT 1
     cssRule    = 'z-index: 1;';
+    // TODO: Remove after debug
+    // cssRule    = 'background: red;';
     ruleIndex  = -1;
+
+    // Chrome is quirky so we will do the counting out here
+    rules = styleSheet.rules;
+    if( !rules ) {
+      rules = styleSheet.cssRules;
+    }
+
+    if( rules ) {
+      ruleIndex = rules.length;
+    }
 
     // TODO: Compress accessor strings (ie aR = "addRule")
     // Add the rule to the stylesheet
-    if( styleSheet.addRule ) {
+    if ( styleSheet.insertRule ) {
+      ruleIndex = styleSheet.insertRule( query + '{' + cssRule + '}', styleSheet.cssRules.length );
+    }
+    else if( styleSheet.addRule ) {
       ruleIndex = styleSheet.rules.length;
       styleSheet.addRule( query, cssRule );
-    }
-    else if ( styleSheet.insertRule ) {
-      ruleIndex = styleSheet.insertRule( query + '{' + cssRule + '}', styleSheet.cssRules.length );
     }
 
     // Traverse the DOM searching for our unique style
@@ -122,54 +137,24 @@
       node,
       function (node) {
         var style = Style(node);
-        // console.log(style.g('z-index') === '1');
         // CONFIGURE POINT 2
+        console.log(node, style.g('z-index'));
         return style.g('z-index') === '1';
       },
       [] );
 
     // Remove the rule for future searches
-    if( styleSheet.removeRule ) {
-      styleSheet.removeRule( ruleIndex );
-    }
-    else if ( styleSheet.deleteRule ) {
+    if ( styleSheet.deleteRule ) {
       styleSheet.deleteRule( ruleIndex );
+    }
+    else if( styleSheet.removeRule ) {
+      styleSheet.removeRule( ruleIndex );
     }
 
     return arr;
   };
 
-  /**
-   * Binding function for CSS Query to window
-   * @param   {Node}   node  [Optional] Node to be searched on, if unspecified search on document
-   * @param   {String} query CSS Query to find elements that match
-   * @returns {HTMLElement} First HTMLElement that matches the CSS Query
-   */
-  win.CSSQuery = function (node, query) {
-    node  = node  || doc;
-    query = query || '*';
-
-    // Use native code if existant
-    if( QuerySelector ) {
-      return node[qS](query);
-    }
-
-    return CSSQuery( node, query, {'s': 1} );
-  };
-
-  // TODO: One more JS Doc
-  win.CSSQueryAll = function (node, query) {
-    node  = node  || doc;
-    query = query || '*';
-
-    // Use native code if existant
-    if( QuerySelectorAll ) {
-      return node[qSA](query);
-    }
-
-    return CSSQuery( node, query, {'s': 0} );
-  };
-
+  // Bind to the outside
   win.CSSQuery = CSSQuery;
 
 }(window, document));
@@ -178,7 +163,7 @@
   // var allDivs;
   // // TODO: Remove try catch
   // try {
-    // allDivs = rawCSSQuery(document.body, 'div');
+    // allDivs = CSSQuery(document.body, 'div');
     // console.log(allDivs);
     // for( i in allDivs ) {
       // allDivs[i].setAttribute('style', 'margin: 100px;');
@@ -190,16 +175,17 @@
 
 // Final test
 window.onload = function () {
-  var myDiv   = rawCSSQuery(document.body, '#myDiv'),
-      allDivs = rawCSSQuery(document.body, 'div'),
+  var myDiv   = CSSQuery(document.body, '#myDiv'),
+      allDivs = CSSQuery(document.body, 'div'),
   // var myDiv   = CSSQuery(null, '#myDiv'),
       // allDivs = CSSQueryAll(null, 'div'),
       i,
       div,
       text;
-  if( myDiv ) {
+
+  if( myDiv.length > 0) {
     text = document.createTextNode('text1')
-    myDiv.appendChild(text);
+    myDiv[0].appendChild(text);
   }
 
   if( allDivs ) {

@@ -94,7 +94,6 @@
       // Check and keep on trying
       if( document.styleSheets.length < 1 ) {
         // TODO: Use IE addStyleSheet method here (only if failures start happening here in testing)
-
         // If nothing works, return early
         return arr;
       }
@@ -107,9 +106,7 @@
     // Grab the first styleSheet
     styleSheet = document.styleSheets[0];
     // CONFIGURE POINT 1
-    cssRule    = 'z-index: 1;';
-    // TODO: Remove after debug
-    // cssRule    = 'background: red;';
+    cssRule    = 'position: relative; z-index: 1;';
     ruleIndex  = -1;
 
     // Chrome is quirky so we will do the counting out here
@@ -125,10 +122,9 @@
     // TODO: Compress accessor strings (ie aR = "addRule")
     // Add the rule to the stylesheet
     if ( styleSheet.insertRule ) {
-      ruleIndex = styleSheet.insertRule( query + '{' + cssRule + '}', styleSheet.cssRules.length );
+      styleSheet.insertRule( query + '{' + cssRule + '}', ruleIndex );
     }
     else if( styleSheet.addRule ) {
-      ruleIndex = styleSheet.rules.length;
       styleSheet.addRule( query, cssRule );
     }
 
@@ -158,20 +154,6 @@
   win.CSSQuery = CSSQuery;
 
 }(window, document));
-
-// window.onload = function () {
-  // var allDivs;
-  // // TODO: Remove try catch
-  // try {
-    // allDivs = CSSQuery(document.body, 'div');
-    // console.log(allDivs);
-    // for( i in allDivs ) {
-      // allDivs[i].setAttribute('style', 'margin: 100px;');
-    // }
-  // } catch(e) {
-    // alert(e.message);
-  // }
-// }
 
 // Final test
 window.onload = function () {

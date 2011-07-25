@@ -4,7 +4,8 @@
       qSA = qS + 'All',
       QuerySelector    = doc[qS],
       QuerySelectorAll = doc[qSA],
-      getStyle;
+      getZIndex,
+      body = doc.body;
       // There are two config points for CSS unobtrusiveness
       // They can be found via a search for 'CONFIGURE POINT'
 
@@ -33,29 +34,34 @@
   }
 
   /**
-   * Style Object constructor
-   * @param {HTMLElement} node Node to return Style Object on
-   * @returns {Object<Style>} Wrapper object with 'g' function to return style of node
+   * z-index fetcher (though you can change manually to anything else; see CONFIGURE POINTS)
+   * @param {HTMLElement} node Node to return z-index of
+   * @returns {String} Z-index of node
    */
-  Style = (function (win) {
+  getZIndex = (function (win) {
     var gCS = win.getComputedStyle;
     return function (node) {
-      var ret = { g: function () { return; } },
+      // Initially supported any key, but due to browser wars and size-first changed to fixed
+      var ret = '',
           style;
       // Skip over text nodes
       if( node.nodeType !== 3 ) {
         if(gCS) {
-          // Second parameter is for pseudo element (we never use it)
-          style = gCS(node);
-          ret = { g: function (key) { return style.getPropertyValue(key) + ''; } };
+          // Second parameter is for pseudo element (we never use it but FF complains otherwise)
+          style = gCS(node, null);
+          // CONFIGURE POINT 3
+          ret = style.getPropertyValue('z-index');
         }
         else {
           style = node.currentStyle;
-          if( style ) {
-            ret = { g: function (key) { return style[key] + ''; } };
+          // CONFIGURE POINT 4
+          if( style ) { 
+            // Reference for proper keys: http://msdn.microsoft.com/en-us/library/ms535231%28v=vs.85%29.aspx
+            ret = style.zIndex;
           }
         }
       }
+      ret += '';
       return ret;
     };
   }(win));
@@ -86,7 +92,7 @@
       // FF does not support IE's createStyleSheet
       styleElt = document.createElement('style');
       // TODO: Bullet proof append
-      head = document.getElementsByTagName("head");
+      head = document.getElementsByTagName('head');
       if( head && head.length > 0 ) {
         head[0].appendChild(styleElt);
       }
@@ -100,7 +106,7 @@
     }
 
     // Place down fallbacks
-    node  = node  || doc;
+    node  = node  || body;
     query = query || '*';
 
     // Grab the first styleSheet
@@ -119,7 +125,7 @@
       ruleIndex = rules.length;
     }
 
-    // TODO: Compress accessor strings (ie aR = "addRule")
+    // TODO: Compress accessor strings (ie aR = 'addRule')
     // Add the rule to the stylesheet
     if ( styleSheet.insertRule ) {
       styleSheet.insertRule( query + '{' + cssRule + '}', ruleIndex );
@@ -132,10 +138,9 @@
     arr = walkNodeFn(
       node,
       function (node) {
-        var style = Style(node);
+        var val = getZIndex(node);
         // CONFIGURE POINT 2
-        console.log(node, style.g('z-index'));
-        return style.g('z-index') === '1';
+        return val === '1';
       },
       [] );
 
@@ -154,28 +159,3 @@
   win.CSSQuery = CSSQuery;
 
 }(window, document));
-
-// Final test
-window.onload = function () {
-  var myDiv   = CSSQuery(document.body, '#myDiv'),
-      allDivs = CSSQuery(document.body, 'div'),
-  // var myDiv   = CSSQuery(null, '#myDiv'),
-      // allDivs = CSSQueryAll(null, 'div'),
-      i,
-      div,
-      text;
-
-  if( myDiv.length > 0) {
-    text = document.createTextNode('text1')
-    myDiv[0].appendChild(text);
-  }
-
-  if( allDivs ) {
-    for( i = allDivs.length; i--; ) {
-      text = document.createTextNode('text2');
-      div = allDivs[i];
-      div.appendChild(text);
-    }
-  }
-};
-

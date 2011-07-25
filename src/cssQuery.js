@@ -11,17 +11,19 @@
 // GNU General Public License for more details.
 // Available at: http://www.gnu.org/licenses/gpl-3.0.txt
 (function (win, doc) {
+  // There are four config points for CSS unobtrusiveness
+  // They can be found via a search for 'CONFIGURE POINT'
   var CSSQuery,
-      qS  = 'querySelector',
-      qSA = qS + 'All',
-      QuerySelector    = doc[qS],
-      QuerySelectorAll = doc[qSA],
       getZIndex,
       body = doc.body;
-      // There are two config points for CSS unobtrusiveness
-      // They can be found via a search for 'CONFIGURE POINT'
 
-  // TODO: JSDoc
+  /**
+   * Traverse DOM top-down running a function on each node, if true return in the end
+   * @param {Node}     node Node to run function on and traverse children of
+   * @param {Function} fn   Boolean function that tells to return at the end or not
+   * @param {Array<Node>} arr Array of elements that returned true during traversal
+   * @returns arr
+   */
   function walkNodeFn(node, fn, arr) {
     var result = fn(node),
         i,
@@ -30,11 +32,6 @@
     if( result ) {
       // jGoods you are welcome for characters over performance
       arr.push( node );
-    }
-    // Using 0 as a hard stop constant
-    else if( result === 0 ) {
-      // TODO: This won't stop recursion from left to right though...
-      return arr;
     }
     childNodes = node.childNodes;
 
@@ -61,13 +58,13 @@
         if(gCS) {
           // Second parameter is for pseudo element (we never use it but FF complains otherwise)
           style = gCS(node, null);
-          // CONFIGURE POINT 3
+          // CONFIGURE POINT 1
           ret = style.getPropertyValue('z-index');
         }
         else {
           style = node.currentStyle;
-          // CONFIGURE POINT 4
-          if( style ) { 
+          // CONFIGURE POINT 2
+          if( style ) {
             // Reference for proper keys: http://msdn.microsoft.com/en-us/library/ms535231%28v=vs.85%29.aspx
             ret = style.zIndex;
           }
@@ -86,7 +83,7 @@
    * @xParam {String}  options.r CSS rule to apply to CSS Query
    * @xParam {Boolean} options.s Stop on first item or not
    * Options have been nerfed to save on file size
-   * @returns {Array.HTMLElement|HTMLElement} HTMLElement(s) that are either the node itself or children and match the CSS Query
+   * @returns {Array<HTMLElement>} HTMLElements that are node and/or its children that match the CSS Query
    */
   CSSQuery = function ( node, query ) {
     var head,
@@ -95,7 +92,12 @@
         cssRule,
         rules,
         arr = [],
-        ruleIndex;
+        ruleIndex,
+        R  = 'Rule',
+        iR = 'insert' + R,
+        aR = 'add'    + R,
+        dR = 'delete' + R,
+        rR = 'remove' + R;
 
     // Create a stylesheet if one does not exist
     // TODO: Could create a Stylesheet Object which has creation/deletion methods but that is overengineering at this point
@@ -123,8 +125,7 @@
 
     // Grab the first styleSheet
     styleSheet = document.styleSheets[0];
-    // CONFIGURE POINT 1
-    cssRule    = 'position: relative; z-index: 1;';
+    // CONFIGURE POINT 3
     ruleIndex  = -1;
 
     // Chrome is quirky so we will do the counting out here
@@ -133,17 +134,20 @@
       rules = styleSheet.cssRules;
     }
 
-    if( rules ) {
-      ruleIndex = rules.length;
+    // If we cannot delete the rule later, it should not be added
+    if( !rules ) {
+      return arr;
     }
 
-    // TODO: Compress accessor strings (ie aR = 'addRule')
+    cssRule   = 'position: relative; z-index: 1;';
+    ruleIndex = rules.length;
+
     // Add the rule to the stylesheet
-    if ( styleSheet.insertRule ) {
-      styleSheet.insertRule( query + '{' + cssRule + '}', ruleIndex );
+    if ( styleSheet[iR] ) {
+      styleSheet[iR]( query + '{' + cssRule + '}', ruleIndex );
     }
-    else if( styleSheet.addRule ) {
-      styleSheet.addRule( query, cssRule );
+    else if( styleSheet[aR] ) {
+      styleSheet[aR]( query, cssRule );
     }
 
     // Traverse the DOM searching for our unique style
@@ -151,17 +155,17 @@
       node,
       function (node) {
         var val = getZIndex(node);
-        // CONFIGURE POINT 2
+        // CONFIGURE POINT 4
         return val === '1';
       },
       [] );
 
     // Remove the rule for future searches
-    if ( styleSheet.deleteRule ) {
-      styleSheet.deleteRule( ruleIndex );
+    if ( styleSheet[dR] ) {
+      styleSheet[dR]( ruleIndex );
     }
-    else if( styleSheet.removeRule ) {
-      styleSheet.removeRule( ruleIndex );
+    else if( styleSheet[rR] ) {
+      styleSheet[rR]( ruleIndex );
     }
 
     return arr;
